@@ -5,7 +5,7 @@ import { useDispatch } from 'react-redux';
 import { auth, db, provider, storage } from '../firebase';
 import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { signInWithEmailAndPassword,  } from "firebase/auth";
-import { ref } from 'firebase/storage';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { updateUserProfile } from '../features/userSlice';
 import { updateProfile } from "firebase/auth";
 import {
@@ -32,8 +32,24 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
 
   const Auth: React.FC = () => {
-     const classes = styles();
-    
+    // 以下のコードだけよくわからなかったのですが、material uiであれば以下のように書く必要があるかと思います。myComponentは例です！
+    // import { makeStyles } from '@mui/styles';
+
+    // const useStyles = makeStyles({
+    //   root: {
+    //     backgroundColor: 'red',
+    //   },
+    // });
+
+    // function MyComponent() {
+    //   const classes = useStyles();
+    //   return <div className={classes.root}>Hello World!</div>;
+    // }
+    // importしたimport styles from "./Auth.module.css"を使うだけなら、const classes = styles()は不要そうかと！
+    // ちょっとここだけ確認をお願いいたします！
+
+    // const classes = styles();
+
 
     const dispatch = useDispatch();
     const [email, setEmail] = useState("");
@@ -83,19 +99,22 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
         const fileName = randomChar + "_" + avatarImage.name
 
         // refでフォルダの階層を指定することができる
-        await ref(db, `avatars/${fileName}`).put(avatarImage);
+        await uploadBytes(ref(storage, `avatars/${fileName}`), avatarImage);
 
         // 画像の場所をurlで取得する
         // .child(fileName)で今格納したfileNameのオブジェクトを取得
         // .getDownLoadURL()で今アップロードしたurlを取得
-        url = await storage.ref("avatars").child(fileName).getDownLoadURL()
+        const storageRef = await ref(storage, `avatars/${fileName}`)
+        await getDownloadURL(storageRef)
       }
 
       // authUserのuser属性が存在する場合、firebaseのupdateProfileを使用して更新する
-      await updateProfile(auth.currentUser,  {
-        displayName: username,
-        photoURL: url,
-      });
+      if (auth.currentUser !== null) {
+        await updateProfile(auth.currentUser, {
+          displayName: username,
+          photoURL: url,
+        });
+      }
       dispatch(
         updateUserProfile({
           displayName: username,
@@ -180,7 +199,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
                 value={password}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {setPassword(e.target.value)}}
               />
-             
+
               <Button
                 fullWidth
                 variant="contained"
@@ -207,8 +226,8 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
                   }
                 }
               >
-                
-              
+
+
               {isLogin ? "Login" : "Register"}
 
               </Button>
@@ -226,7 +245,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
                   <span className={styles.login_toggleMode} onClick={() => setIsLogin(!isLogin)}>{isLogin ? "Create new account ?" : "Back to login"}</span>
                 </Grid>
               </Grid>
-              <Button 
+              <Button
                 fullWidth
                 variant="contained"
                 sx={{ mt: 3, mb: 2 }}
